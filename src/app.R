@@ -29,11 +29,13 @@ ui <- navbarPage(
                         label = h3("Upload CSV"),
                         accept = c("text/csv")
                     ),
-                    numericInput("prNumInput", label = h3("Degree"), value = 1)
+                    numericInput("prDegree", label = h3("Degree"), value = 0),
+                    numericInput("prNumInput", label = h3("x"), value = 1)
                 ),
                 mainPanel(
                     tableOutput("prTable"),
-                    textOutput("prFunction")
+                    textOutput("prFunction"),
+                    textOutput("prSolution")
                 )
             )
         )
@@ -83,14 +85,14 @@ server <- function(input, output){
         prData()
     })
     
-    output$prFunction <- renderPrint({
+    prFunction <- reactive({
         if(is.null(prData())){
             return(NULL)
         }
         
-        l = input$prNumInput + 1
+        l = input$prDegree + 1
         dataMatrix = matrix(0, l, l + 1)
-        prFunction = "y ="
+        outputString = "function(x) "
         
         for(y in 1:l){
             for(x in 1:l){
@@ -120,16 +122,28 @@ server <- function(input, output){
         }
         
         for(i in l:1){
-            prFunction = paste(prFunction, dataMatrix[i, l + 1])
+            outputString = paste(outputString, dataMatrix[i, l + 1])
             if(i == 2){
-                prFunction = paste(prFunction, "x + ", paste = "")
+                outputString = paste(outputString, " * x + ", sep = "")
             } else if(i > 1){
-                prFunction = paste(prFunction, "x ^ ", i - 1, paste = "")
-                prFunction = paste(prFunction, "+")
+                outputString = paste(outputString, " * x ^ ", i - 1, sep = "")
+                outputString = paste(outputString, "+")
             }
         }
         
-        prFunction
+        outputString
+    })
+    
+    output$prFunction <- renderPrint({
+        prFunction()
+    })
+    
+    output$prSolution <- renderPrint({
+        if(is.null(prFunction())){
+            return("Upload a csv file")
+        }
+        prF = eval(parse(text = prFunction()))
+        prF(input$prNumInput)
     })
 }
 
