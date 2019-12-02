@@ -1,4 +1,5 @@
 library(shiny)
+library(rhandsontable)
 
 ui <- navbarPage(
     "CMSC 150 - Project",
@@ -42,9 +43,19 @@ ui <- navbarPage(
     ),
     tabPanel(
         "Simplex Method",
+        tags$style("#smP1, #smP2, #smP3, #smW1, #smW2, #smW3, #smW4, #smW5, #smS1, #smS2, #smS3 { width: 200px; display: inline-block; }"),
         sidebarLayout(
-            sidebarPanel("side3"),
-            mainPanel("main3")
+            sidebarPanel(
+                tags$h4("Shipping Cost"),
+                rHandsontableOutput("smTable1"),
+                tags$h4("Demands"),
+                rHandsontableOutput("smTable2"),
+                tags$h4("Supply"),
+                rHandsontableOutput("smTable3")
+            ),
+            mainPanel(
+                tableOutput("temp")
+            )
         )
     ),
     inverse = TRUE
@@ -144,6 +155,44 @@ server <- function(input, output){
         }
         prF = eval(parse(text = prFunction()))
         prF(input$prNumInput)
+    })
+    
+    tableData1 = data.frame(w1 = c(5, 6, 3), w2 = c(6, 7, 5), w3 = c(7, 8, 7), w4 = c(8, 9, 11), w5 = c(9, 10, 13))
+    rownames(tableData1) <- c("p1", "p2", "p3")
+    tableData2 = data.frame(w1 = c(100), w2 = c(100), w3 = c(100), w4 = c(100), w5 = c(100))
+    rownames(tableData2) <- c("")
+    tableData3 = data.frame(p1 = c(200), p2 = c(200), p3 = c(200))
+    rownames(tableData3) <- c("")
+    
+    # referenced from https://stackoverflow.com/questions/22272571/data-input-via-shinytable-in-r-shiny-application
+    observe({
+        if(!is.null(input$smTable1)){
+            tableData1 = hot_to_r(input$smTable1)
+        }
+        if(!is.null(input$smTable2)){
+            tableData2 = hot_to_r(input$smTable2)
+        }
+        if(!is.null(input$smTable3)){
+            tableData3 = hot_to_r(input$smTable3)
+        }
+    })
+    
+    output$smTable1 <- renderRHandsontable({
+        if(!is.null(tableData1)){
+            rhandsontable(tableData1, stretchH = "all")
+        }
+    })
+    
+    output$smTable2 <- renderRHandsontable({
+        if(!is.null(tableData2)){
+            rhandsontable(tableData2, stretchH = "all")
+        }
+    })
+    
+    output$smTable3 <- renderRHandsontable({
+        if(!is.null(tableData3)){
+            rhandsontable(tableData3, stretchH = "all")
+        }
     })
 }
 
