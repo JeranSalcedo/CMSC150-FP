@@ -55,7 +55,8 @@ ui <- navbarPage(
             ),
             mainPanel(
                 textOutput("smObjF"),
-                verbatimTextOutput("smConstraints")
+                verbatimTextOutput("smConstraints"),
+                tableOutput("smOutputTable")
             )
         )
     ),
@@ -238,14 +239,62 @@ server <- function(input, output){
                     constraint = paste(constraint, "+ ")
                 }
             }
-            supplyConstraint = paste(constraint, "<=", tableData3()[1, y])
-            demmandConstraint = paste(constraint, ">=", tableData2()[1, y])
             
-            constraints[(y - 1) * 2 + 1] = supplyConstraint
-            constraints[(y - 1) * 2 + 2] = demmandConstraint
+            constraint = paste(constraint, "<=", tableData3()[1, y])
+            constraints[y] = constraint
+        }
+        
+        for(x in 1:ncol(tableData1())){
+            constraint = ""
+            for(y in 1:nrow(tableData1())){
+                constraint = paste(constraint, "m(", rownames(tableData1())[y], ", ", colnames(tableData1())[x], ")", sep = "")
+                if(y < nrow(tableData1())){
+                    constraint = paste(constraint, "+ ")
+                }
+            }
+            
+            constraint = paste(constraint, ">=", tableData2()[1, x])
+            constraints[x + 3] = constraint
+        }
+        
+        for(y in 1:nrow(tableData1())){
+            for(x in 1:ncol(tableData1())){
+                constraints[(y - 1) * ncol(tableData1()) + x + 8] = paste("m(", rownames(tableData1())[y], ", ", colnames(tableData1())[x], ") >= 0", sep = "")
+            }
         }
         
         constraints
+    })
+    
+    output$smOutputTable <- renderTable({
+        colLabels = c()
+        objR = c()
+        outputTable = matrix(c(1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 200, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 200, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 200, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 100, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, 100), 8, 24, TRUE);
+        
+        
+        for(x in 1:ncol(tableData1())){
+            for(y in 1:nrow(tableData1())){
+                colLabels[(x - 1) * nrow(tableData1()) + y] = paste("m(", rownames(tableData1())[y], ", ", colnames(tableData1())[x], ")", sep = "")
+                objR[(x - 1) * nrow(tableData1()) + y] = tableData1()[y, x]
+            }
+        }
+        
+        for(i in 1:8){
+            if(i < 4){
+                outputTable[i, 24] = tableData3()[1, i]
+            } else {
+                outputTable[i, 24] = tableData2()[1, i - 3]
+            }
+            objR[i + 15] = 0
+            colLabels[i + 15] = paste("s", i, sep = "")
+        }
+        colLabels[24] = "b"
+        objR[24] = 0
+        
+        outputTable = rbind(outputTable, objR)
+        colnames(outputTable) = colLabels
+        
+        outputTable
     })
 }
 
