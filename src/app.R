@@ -154,9 +154,46 @@ server <- function(input, output){
         count = count + 2
         
         final[count] = "a1 = 0"
-        print(dataMatrix)
         
-        final
+        for(i in 1:(ncol(dataMatrix) - 1)){
+            if(i < ncol(dataMatrix) - 2){
+                highestInd = 1
+                highestVal = abs(dataMatrix[i, i])
+                
+                for(y in 1:nrow(dataMatrix[i:nrow(dataMatrix), ])){
+                    if(abs(dataMatrix[i:nrow(dataMatrix), ][y, i]) > highestVal){
+                        highestInd = y
+                        highestVal = abs(dataMatrix[i:nrow(dataMatrix), ][y, i])
+                    }
+                }
+                
+                dataMatrix[i:nrow(dataMatrix), ] = dataMatrix[i:nrow(dataMatrix), ][c(highestInd, (1:(nrow(dataMatrix) - i + 1))[-highestInd]), ]
+            }
+            
+            pivotElement = dataMatrix[i, i]
+            for(x in i:ncol(dataMatrix)){
+                dataMatrix[i, x] = dataMatrix[i, x] / pivotElement
+            }
+            for(y in 1:nrow(dataMatrix)){
+                if(y == i){
+                    next
+                }
+                mul = dataMatrix[y, i]
+                for(x in i:ncol(dataMatrix)){
+                    dataMatrix[y, x] = dataMatrix[y, x] - mul * dataMatrix[i, x]
+                }
+            }
+        }
+        
+        solutionVec = c(0, dataMatrix[, ncol(dataMatrix)])
+        for(i in 1:(length(solutionVec) / 3)){
+            print(paste("For", qsiData()[i, "x"], "< x <", qsiData()[i + 1, "x"]))
+            print(paste("f(x) = ", solutionVec[(i - 1) * 3 + 1], " * x ^ 2 + ", solutionVec[(i - 1) * 3 + 2], " * x + ", solutionVec[(i - 1) * 3 + 3], sep = ""))
+            
+            if(input$qsiNumInput >= qsiData()[i, "x"] && input$qsiNumInput <= qsiData()[i + 1, "x"]){
+                print(paste("f(", input$qsiNumInput, ") = ", solutionVec[(i - 1) * 3 + 1] * input$qsiNumInput ^ 2 + solutionVec[(i - 1) * 3 + 2] * input$qsiNumInput + solutionVec[(i - 1) * 3 + 3], sep = ""))
+            }
+        }
     })
     
     prData <- reactive({
