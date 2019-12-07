@@ -17,7 +17,8 @@ ui <- navbarPage(
                     numericInput("qsiNumInput", label = h3("x"), value = 1)
                 ),
                 mainPanel(
-                    tableOutput("qsiTable")
+                    tableOutput("qsiTable"),
+                    verbatimTextOutput("qsiEquations")
                 )
             )
         ),
@@ -43,7 +44,7 @@ ui <- navbarPage(
     ),
     tabPanel(
         "Simplex Method",
-        tags$style("##smP1, #smP2, #smP3, #smW1, #smW2, #smW3, #smW4, #smW5, #smS1, #smS2, #smS3 { width: 200px; display: inline-block; }"),
+        tags$style("#smP1, #smP2, #smP3, #smW1, #smW2, #smW3, #smW4, #smW5, #smS1, #smS2, #smS3, #smPB, #smNB { width: 200px; display: inline-block; }"),
         sidebarLayout(
             sidebarPanel(
                 tags$h4("Shipping Cost"),
@@ -51,12 +52,17 @@ ui <- navbarPage(
                 tags$h4("Demands"),
                 rHandsontableOutput("smTable2"),
                 tags$h4("Supply"),
-                rHandsontableOutput("smTable3")
+                rHandsontableOutput("smTable3"),
+                tags$h4("Iterations"),
+                actionButton("smPB", "Previous Page"),
+                actionButton("smNB", "Next Page")
             ),
             mainPanel(
                 textOutput("smObjF"),
                 verbatimTextOutput("smConstraints"),
-                tableOutput("smOutputTable")
+                textOutput("smIterations"),
+                tableOutput("smOutputTable"),
+                tableOutput("smBS")
             )
         )
     ),
@@ -79,6 +85,56 @@ server <- function(input, output){
         }
         
         qsiData()
+    })
+    
+    output$qsiEquations <- renderPrint({
+        if(is.null(qsiData())){
+            return(NULL)
+        }
+        
+        count = 1
+        final = c()
+        
+        for(i in 3:nrow(qsiData())){
+            final[count] = paste(
+                qsiData()[i - 1, "x"] ^ 2, " * a", i - 2, " + ",
+                qsiData()[i - 1, "x"], " * b", i - 2, " + ",
+                "c", i - 2, " = ", qsiData()[i - 1, "y"],
+                sep = ""
+            )
+            final[count + 1] = paste(
+                qsiData()[i - 1, "x"] ^ 2, " * a", i - 1, " + ",
+                qsiData()[i - 1, "x"], " * b", i - 1, " + ",
+                "c", i - 1, " = ", qsiData()[i - 1, "y"],
+                sep = ""
+            )
+            final[count + 2] = paste(
+                qsiData()[i - 1, "x"] * 2, " * a", i - 2, " + ",
+                " * b", i - 2, " = ",
+                qsiData()[i - 1, "x"] * 2, " * a", i - 1, " + ",
+                " * b", i - 1,
+                sep = ""
+            )
+            count = count + 3
+        }
+        
+        final[count] = paste(
+            qsiData()[1, "x"] ^ 2, " * a1 + ",
+            qsiData()[1, "x"], " * b1 + ",
+            "c1 = ", qsiData()[1, "y"],
+            sep = ""
+        )
+        final[count + 1] = paste(
+            qsiData()[nrow(qsiData()), "x"] ^ 2, " * a", nrow(qsiData()) - 1, " + ",
+            qsiData()[nrow(qsiData()), "x"], " * b", nrow(qsiData()) - 1, " + ",
+            "c", nrow(qsiData()) - 1, " = ", qsiData()[nrow(qsiData()), "y"],
+            sep = ""
+        )
+        count = count + 2
+        
+        final[count] = "a1 = 0"
+        
+        final
     })
     
     prData <- reactive({
@@ -159,10 +215,9 @@ server <- function(input, output){
         prF(input$prNumInput)
     })
     
-    
-    
-    
-    
+    pageNumber = reactiveVal({
+        0
+    })
     tableData1 = reactiveVal({
         table1 = data.frame(w1 = c(5, 6, 3), w2 = c(6, 7, 5), w3 = c(7, 8, 7), w4 = c(8, 9, 11), w5 = c(9, 10, 13))
         rownames(table1) <- c("p1", "p2", "p3")
@@ -266,12 +321,10 @@ server <- function(input, output){
         constraints
     })
     
-    output$smOutputTable <- renderTable({
+    solutions <- reactive({
         colLabels = c()
         objR = c()
-        outputTable = matrix(c(1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 200, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 200, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 200, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 100, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, 100), 8, 24, TRUE);
-        
-        
+        initialTableau = matrix(c(1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 200, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 200, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 200, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 100, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, 0, 100), 8, 25, TRUE)
         for(x in 1:ncol(tableData1())){
             for(y in 1:nrow(tableData1())){
                 colLabels[(x - 1) * nrow(tableData1()) + y] = paste("m(", rownames(tableData1())[y], ", ", colnames(tableData1())[x], ")", sep = "")
@@ -280,21 +333,61 @@ server <- function(input, output){
         }
         
         for(i in 1:8){
+            initialTableau[i, 24] = 0
             if(i < 4){
-                outputTable[i, 24] = tableData3()[1, i]
+                initialTableau[i, 25] = tableData3()[1, i]
             } else {
-                outputTable[i, 24] = tableData2()[1, i - 3]
+                initialTableau[i, 25] = tableData2()[1, i - 3]
             }
             objR[i + 15] = 0
             colLabels[i + 15] = paste("s", i, sep = "")
         }
-        colLabels[24] = "b"
-        objR[24] = 0
+        colLabels[24] = "Z"
+        colLabels[25] = "Answer"
+        objR[24] = 1
+        objR[25] = 0
         
-        outputTable = rbind(outputTable, objR)
-        colnames(outputTable) = colLabels
+        initialTableau = rbind(initialTableau, objR)
+        colnames(initialTableau) = colLabels
         
-        outputTable
+        initialTableau
+        
+        final = list(initialTableau = initialTableau)
+    })
+    
+    output$smOutputTable <- renderTable({
+        solutions()$initialTableau
+    })
+    
+    # output$smBS <- RenderTable({
+    #     for(x in 1:ncol(tableData1())){
+    #         count = 0
+    #         for(y in 1:nrow(tableData1())){
+    #             if(count > 0 && ){
+    #                 break
+    #             }
+    #         }
+    #     }
+    # })
+    
+    observeEvent(input$smPB, {
+        prevVal = pageNumber()
+        if(prevVal > 0){
+            pageNumber(prevVal - 1)
+        }
+    })
+    
+    observeEvent(input$smNB, {
+        prevVal = pageNumber()
+        pageNumber(prevVal + 1)
+    })
+    
+    output$smIterations <- renderText({
+        if(pageNumber() == 0){
+            "Initial Tableau"
+        } else {
+            paste("Iteration", pageNumber())
+        }
     })
 }
 
