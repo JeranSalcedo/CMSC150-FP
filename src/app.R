@@ -91,6 +91,7 @@ server <- function(input, output){
         if(is.null(qsiData())){
             return(NULL)
         }
+        dataMatrix = matrix(0, 3 * (nrow(qsiData()) - 1) - 1, 3 * (nrow(qsiData()) - 1))
         
         count = 1
         final = c()
@@ -102,19 +103,31 @@ server <- function(input, output){
                 "c", i - 2, " = ", qsiData()[i - 1, "y"],
                 sep = ""
             )
+            dataMatrix[count, 3 * (i - 3)] = qsiData()[i - 1, "x"] ^ 2
+            dataMatrix[count, 3 * (i - 3) + 1] = qsiData()[i - 1, "x"]
+            dataMatrix[count, 3 * (i - 3) + 2] = 1
+            dataMatrix[count, 3 * (nrow(qsiData()) - 1)] = qsiData()[i - 1, "y"]
             final[count + 1] = paste(
                 qsiData()[i - 1, "x"] ^ 2, " * a", i - 1, " + ",
                 qsiData()[i - 1, "x"], " * b", i - 1, " + ",
                 "c", i - 1, " = ", qsiData()[i - 1, "y"],
                 sep = ""
             )
+            dataMatrix[count + 1, 3 * (i - 2)] = qsiData()[i - 1, "x"] ^ 2
+            dataMatrix[count + 1, 3 * (i - 2) + 1] = qsiData()[i - 1, "x"]
+            dataMatrix[count + 1, 3 * (i - 2) + 2] = 1
+            dataMatrix[count + 1, 3 * (nrow(qsiData()) - 1)] = qsiData()[i - 1, "y"]
             final[count + 2] = paste(
                 qsiData()[i - 1, "x"] * 2, " * a", i - 2, " + ",
-                " * b", i - 2, " = ",
+                "b", i - 2, " = ",
                 qsiData()[i - 1, "x"] * 2, " * a", i - 1, " + ",
-                " * b", i - 1,
+                "b", i - 1,
                 sep = ""
             )
+            dataMatrix[count + 2, 3 * (i - 3)] = qsiData()[i - 1, "x"] * 2
+            dataMatrix[count + 2, 3 * (i - 3) + 1] = 1
+            dataMatrix[count + 2, 3 * (i - 2)] = -qsiData()[i - 1, "x"] * 2
+            dataMatrix[count + 2, 3 * (i - 2) + 1] = -1
             count = count + 3
         }
         
@@ -124,15 +137,24 @@ server <- function(input, output){
             "c1 = ", qsiData()[1, "y"],
             sep = ""
         )
+        dataMatrix[count, 0] = qsiData()[1, "x"] ^ 2
+        dataMatrix[count, 1] = qsiData()[1, "x"]
+        dataMatrix[count, 2] = 1
+        dataMatrix[count, 3 * (nrow(qsiData()) - 1)] = qsiData()[1, "y"]
         final[count + 1] = paste(
             qsiData()[nrow(qsiData()), "x"] ^ 2, " * a", nrow(qsiData()) - 1, " + ",
             qsiData()[nrow(qsiData()), "x"], " * b", nrow(qsiData()) - 1, " + ",
             "c", nrow(qsiData()) - 1, " = ", qsiData()[nrow(qsiData()), "y"],
             sep = ""
         )
+        dataMatrix[count + 1, 3 * (nrow(qsiData()) - 1) - 3] = qsiData()[nrow(qsiData()), "x"] ^ 2
+        dataMatrix[count + 1, 3 * (nrow(qsiData()) - 1) - 2] = qsiData()[nrow(qsiData()), "x"]
+        dataMatrix[count + 1, 3 * (nrow(qsiData()) - 1) - 1] = 1
+        dataMatrix[count + 1, 3 * (nrow(qsiData()) - 1)] = qsiData()[nrow(qsiData()), "y"]
         count = count + 2
         
         final[count] = "a1 = 0"
+        print(dataMatrix)
         
         final
     })
