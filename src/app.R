@@ -195,7 +195,7 @@ server <- function(input, output){
             }
         }
     })
-    
+        
     prData <- reactive({
         csvFile <- input$prFileInput
         
@@ -409,9 +409,67 @@ server <- function(input, output){
         initialTableau = rbind(initialTableau, objR)
         colnames(initialTableau) = colLabels
         
-        initialTableau
+        final = list()
         
-        final = list(initialTableau = initialTableau)
+        j = 1
+        stop = FALSE
+        tableau = initialTableau
+        iteration = 1
+        while(!stop){
+            pivotRow = 0
+            pivotElement = 0
+            tRatio = NA
+            for(y in 1:(nrow(tableau) - 1)){
+                if(tableau[y, j] <= 0){
+                    next
+                }
+                if(is.na(tRatio) || tableau[y, ncol(tableau)] / tableau[y, j] <= tRatio){
+                    tRatio = tableau[y, ncol(tableau)] / tableau[y, j]
+                    pivotRow = y
+                    pivotElement = tableau[y, j]
+                }
+            }
+            
+            for(x in 1:ncol(tableau)){
+                tableau[pivotRow, x] = tableau[pivotRow, x] / pivotElement
+            }
+            for(y in 1:nrow(tableau)){
+                if(y == pivotRow){
+                    next
+                }
+                pivotElement = tableau[y, j]
+                for(x in 1:ncol(tableau)){
+                    tableau[y, x] = tableau[y, x] - pivotElement * tableau[pivotRow, x]
+                }
+            }
+            
+            final[[iteration]] = tableau
+            iteration = iteration + 1
+            
+            stop = TRUE
+            leastVal = 0
+            for(i in 1:(ncol(tableau) - 1)){
+                if(tableau[nrow(tableau), i] < 0){
+                    stop = FALSE
+                    if(tableau[nrow(tableau), i] < leastVal){
+                        leastVal = tableau[nrow(tableau), i]
+                        j = i
+                    }
+                }
+            }
+            # if(j + 3 > 8){
+            #     j = (j + 3) %% 3 + 1
+            # } else {
+            #     j = j + 3
+            # }
+            # if(iteration > 5){
+            #     stop = TRUE
+            # }
+        }
+        
+        final$initialTableau = initialTableau
+        
+        final
     })
     
     output$smOutputTable <- renderTable({
