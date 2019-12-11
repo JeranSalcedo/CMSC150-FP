@@ -53,19 +53,26 @@ ui <- navbarPage(
                 rHandsontableOutput("smTable2"),
                 tags$h4("Supply"),
                 rHandsontableOutput("smTable3"),
-                tags$h4("Iterations"),
-                actionButton("smPB", "Previous Page"),
-                actionButton("smNB", "Next Page")
+                checkboxInput("smShow", "Show Iterations"),
+                conditionalPanel(
+                    condition = "input.smShow == 1",
+                    tags$h4("Iterations"),
+                    actionButton("smPB", "Previous Page"),
+                    actionButton("smNB", "Next Page")
+                )
             ),
             mainPanel(
                 textOutput("smObjF"),
                 verbatimTextOutput("smConstraints"),
                 tags$h4("Optimal Solution"),
                 tableOutput("smOS"),
-                textOutput("smIterations"),
-                tableOutput("smOutputTable"),
-                tags$h4("Basic Solution"),
-                tableOutput("smBS")
+                conditionalPanel(
+                    condition = "input.smShow == 1",
+                    textOutput("smIterations"),
+                    tableOutput("smOutputTable"),
+                    tags$h4("Basic Solution"),
+                    tableOutput("smBS")
+                )
             )
         )
     ),
