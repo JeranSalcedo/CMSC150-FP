@@ -60,8 +60,11 @@ ui <- navbarPage(
             mainPanel(
                 textOutput("smObjF"),
                 verbatimTextOutput("smConstraints"),
+                tags$h4("Optimal Solution"),
+                tableOutput("smOS"),
                 textOutput("smIterations"),
                 tableOutput("smOutputTable"),
+                tags$h4("Basic Solution"),
                 tableOutput("smBS")
             )
         )
@@ -383,6 +386,7 @@ server <- function(input, output){
     solutions <- reactive({
         colLabels = c()
         objR = c()
+        basicSolutionTable = matrix(0, 1, 23)
         initialTableau = matrix(c(1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 200, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 200, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 200, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 100, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, 0, 100), 8, 25, TRUE)
         for(x in 1:ncol(tableData1())){
             for(y in 1:nrow(tableData1())){
@@ -401,6 +405,7 @@ server <- function(input, output){
             objR[i + 15] = 0
             colLabels[i + 15] = paste("s", i, sep = "")
         }
+        colnames(basicSolutionTable) = colLabels
         colLabels[24] = "Z"
         colLabels[25] = "Answer"
         objR[24] = 1
@@ -410,8 +415,8 @@ server <- function(input, output){
         colnames(initialTableau) = colLabels
         
         final = list()
+        final[[1]] = initialTableau
         
-        j = 1
         stop = FALSE
         tableau = initialTableau
         iteration = 1
@@ -419,6 +424,59 @@ server <- function(input, output){
             pivotRow = 0
             pivotElement = 0
             tRatio = NA
+            feasible = TRUE
+            set = FALSE
+            
+            for(x in 1:(ncol(tableau) - 2)){
+                counter = 0
+                for(y in 1:nrow(tableau)){
+                    if(counter > 1){
+                        if(set){
+                            set = FALSE
+                            feasible = TRUE
+                            pivotRow = 0
+                        }
+                        basicSolutionTable[1, x] = 0
+                        break
+                    }
+                    if(tableau[y, x] != 0){
+                        basicSolutionTable[1, x] = tableau[y, x] * tableau[y, ncol(tableau)]
+                        if(!set && basicSolutionTable[1, x] < 0){
+                            feasible = FALSE
+                            set = TRUE
+                            pivotRow = y
+                        }
+                        
+                        counter = counter + 1
+                    }
+                }
+            }
+            final[[(iteration - 1) * 2 + 2]] = basicSolutionTable
+            
+            if(feasible){
+                stop = TRUE
+                leastVal = 0
+                for(i in 1:(ncol(tableau) - 1)){
+                    if(tableau[nrow(tableau), i] < 0){
+                        stop = FALSE
+                        if(tableau[nrow(tableau), i] < leastVal){
+                            leastVal = tableau[nrow(tableau), i]
+                            j = i
+                        }
+                    }
+                }
+                if(stop){
+                    break
+                }
+            } else {
+                for(i in 1:(ncol(tableau) - 1)){
+                    if(tableau[pivotRow, i] > 0){
+                        j = i
+                        break
+                    }
+                }
+            }
+            
             for(y in 1:(nrow(tableau) - 1)){
                 if(tableau[y, j] <= 0){
                     next
@@ -429,7 +487,7 @@ server <- function(input, output){
                     pivotElement = tableau[y, j]
                 }
             }
-            
+
             for(x in 1:ncol(tableau)){
                 tableau[pivotRow, x] = tableau[pivotRow, x] / pivotElement
             }
@@ -443,49 +501,28 @@ server <- function(input, output){
                 }
             }
             
-            final[[iteration]] = tableau
+            final[[iteration * 2 + 1]] = tableau
+
             iteration = iteration + 1
-            
-            stop = TRUE
-            leastVal = 0
-            for(i in 1:(ncol(tableau) - 1)){
-                if(tableau[nrow(tableau), i] < 0){
-                    stop = FALSE
-                    if(tableau[nrow(tableau), i] < leastVal){
-                        leastVal = tableau[nrow(tableau), i]
-                        j = i
-                    }
-                }
-            }
-            # if(j + 3 > 8){
-            #     j = (j + 3) %% 3 + 1
-            # } else {
-            #     j = j + 3
-            # }
-            # if(iteration > 5){
-            #     stop = TRUE
-            # }
         }
-        
-        final$initialTableau = initialTableau
         
         final
     })
     
-    output$smOutputTable <- renderTable({
-        solutions()$initialTableau
+    output$smOS <- renderTable({
+        table = solutions()[[length(solutions())]][1, 1:15]
+        table = c(-1 * solutions()[[length(solutions()) - 1]][nrow(solutions()[[length(solutions()) - 1]]), ncol(solutions()[[length(solutions()) - 1]])], table)
+        names(table)[1] = "Z"
+        table = t(table)
     })
     
-    # output$smBS <- RenderTable({
-    #     for(x in 1:ncol(tableData1())){
-    #         count = 0
-    #         for(y in 1:nrow(tableData1())){
-    #             if(count > 0 && ){
-    #                 break
-    #             }
-    #         }
-    #     }
-    # })
+    output$smOutputTable <- renderTable({
+        solutions()[[pageNumber() * 2 + 1]]
+    })
+    
+    output$smBS <- renderTable({
+        solutions()[[pageNumber() * 2 + 2]]
+    })
     
     observeEvent(input$smPB, {
         prevVal = pageNumber()
@@ -496,7 +533,9 @@ server <- function(input, output){
     
     observeEvent(input$smNB, {
         prevVal = pageNumber()
-        pageNumber(prevVal + 1)
+        if(prevVal < length(solutions()) / 2 - 1){
+            pageNumber(prevVal + 1)
+        }
     })
     
     output$smIterations <- renderText({
